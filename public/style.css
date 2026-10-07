@@ -216,11 +216,12 @@ html, body {
 .pot-area {
   position: absolute;
   left: 50%;
-  top: 42%;
+  top: 38%;
   transform: translate(-50%, -50%);
   text-align: center;
-  width: 90%;
+  width: min(70%, 280px);
   z-index: 2;
+  pointer-events: none;
 }
 
 .pot {
@@ -253,7 +254,7 @@ html, body {
 .seats {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 3;
 }
 
 .seat {
@@ -500,26 +501,28 @@ html, body {
   50% { opacity: 0.78; }
 }
 
-/* Pot chip stack */
+/* Pot chip stack — keep under Pot label, above community, don't cover seats */
 .pot-chips {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  height: 28px;
-  margin-bottom: 4px;
+  height: 20px;
+  margin: 2px auto 6px;
   position: relative;
-  min-height: 8px;
+  max-width: 140px;
+  overflow: visible;
 }
 .chip-disc {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 2px dashed rgba(255,255,255,0.55);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.45), inset 0 0 0 3px rgba(0,0,0,0.15);
-  margin-left: -10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(0,0,0,0.15);
+  margin-left: -8px;
   position: relative;
   z-index: calc(1 + var(--chip-i, 0));
-  transform: translateY(calc(var(--chip-i, 0) * -1.5px));
+  transform: translateY(calc(var(--chip-i, 0) * -1px));
+  flex-shrink: 0;
 }
 .chip-disc:first-child { margin-left: 0; }
 
