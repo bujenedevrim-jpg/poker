@@ -53,12 +53,21 @@ function showError(msg) {
 
 function toast(msg) {
   const el = $('toast');
+  if (!el) return;
+  // Never float action captions over the table / seats
+  const m = String(msg || '');
+  if (
+    /artırdı|bahis koydu|gördü|pas geçti|çekildi|hepsi!/i.test(m) &&
+    !$('screen-table').hidden
+  ) {
+    return;
+  }
   el.hidden = false;
-  el.textContent = msg;
+  el.textContent = m;
   clearTimeout(toast._t);
   toast._t = setTimeout(() => {
     el.hidden = true;
-  }, 3200);
+  }, 2200);
 }
 
 function parseRoomFromUrl() {
@@ -380,7 +389,13 @@ function render(s) {
   $('phase-badge').textContent =
     s.phaseLabel || phaseTR[s.phase] || s.phase;
   $('pot').textContent = s.pot;
-  $('table-msg').textContent = s.message || '';
+  {
+    const msg = s.message || '';
+    const la = (s.lastAction && s.lastAction.text) || '';
+    // Avoid second copy of the same action caption over seats
+    $('table-msg').textContent =
+      la && (msg === la || msg.startsWith(la)) ? '' : msg;
+  }
 
   renderPotChips(s.pot);
   renderTurnBanner(s);

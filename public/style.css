@@ -255,11 +255,14 @@ html, body {
 }
 
 .table-msg {
-  margin: 8px 0 0;
+  margin: 6px 12px 0;
   font-size: 0.78rem;
   color: #d7ffe6;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   min-height: 1.2em;
+  text-align: center;
+  max-width: 560px;
+  width: 100%;
 }
 
 .seats {
