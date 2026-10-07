@@ -418,6 +418,7 @@ function render(s) {
   renderTurnBanner(s);
   renderCommunity(s.community);
   renderSeats(s.players);
+  renderYouMeta(s);
   renderHole(s);
   renderShowdown(s);
   renderLastAction(s);
