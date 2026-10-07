@@ -477,17 +477,17 @@ class PokerTable {
       this.deck.pop();
       this.community.push(this.deck.pop(), this.deck.pop(), this.deck.pop());
       this.phase = PHASES.FLOP;
-      this.message = 'Flop açıldı';
+      this.message = 'Üç kart açıldı';
     } else if (this.phase === PHASES.FLOP) {
       this.deck.pop();
       this.community.push(this.deck.pop());
       this.phase = PHASES.TURN;
-      this.message = 'Turn açıldı';
+      this.message = 'Dördüncü kart açıldı';
     } else if (this.phase === PHASES.TURN) {
       this.deck.pop();
       this.community.push(this.deck.pop());
       this.phase = PHASES.RIVER;
-      this.message = 'River açıldı';
+      this.message = 'Beşinci kart açıldı';
     } else if (this.phase === PHASES.RIVER) {
       this._showdown();
       return;
