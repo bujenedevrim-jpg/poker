@@ -324,10 +324,9 @@ function renderLastAction(s) {
     el.textContent = '';
     return;
   }
+  // Center caption only — no floating toast over seats
   el.hidden = false;
-  el.textContent = s.lastAction.text + (s.pot > 0 ? ` · Pot: ${s.pot}` : '');
-
-  // Toast on new raise/bet/all-in so amount is obvious
+  el.textContent = s.lastAction.text;
   const key =
     (s.lastAction.playerId || '') +
     '|' +
@@ -338,18 +337,7 @@ function renderLastAction(s) {
     (s.lastAction.amount || 0) +
     '|' +
     (s.handNumber || 0);
-  if (
-    key !== lastActionKey &&
-    (s.lastAction.type === 'raise' ||
-      s.lastAction.type === 'bet' ||
-      s.lastAction.type === 'allin' ||
-      s.lastAction.type === 'call')
-  ) {
-    lastActionKey = key;
-    toast(s.lastAction.text);
-  } else if (key !== lastActionKey) {
-    lastActionKey = key;
-  }
+  lastActionKey = key;
 }
 
 function renderActions(legal) {

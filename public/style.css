@@ -251,7 +251,7 @@ html, body {
   justify-content: center;
   gap: 6px;
   flex-wrap: wrap;
-  min-height: 64px;
+  min-height: 48px;
 }
 
 .table-msg {
@@ -437,7 +437,8 @@ html, body {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(24px + var(--safe-bottom));
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  bottom: auto;
   transform: translateX(-50%);
   background: rgba(20,20,20,0.92);
   color: #fff;
@@ -491,10 +492,19 @@ html, body {
 .showdown-panel .sd-line { margin: 4px 0; color: var(--text); }
 .showdown-panel .sd-you { color: #9fe8b8; }
 .last-action {
-  margin-top: 6px;
-  font-size: 0.85rem;
+  display: inline-block;
+  margin: 4px auto 6px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,224,138,0.35);
+  font-size: 0.75rem;
+  line-height: 1.25;
   color: #ffe08a;
   font-weight: 600;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* Turn banner — whose turn */
