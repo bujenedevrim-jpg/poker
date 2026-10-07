@@ -441,3 +441,38 @@ html, body {
   }
   .seat { width: 78px; }
 }
+
+/* Live hand strength + showdown */
+.hand-strength {
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: rgba(232, 197, 71, 0.15);
+  border: 1px solid rgba(232, 197, 71, 0.45);
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--gold);
+  display: inline-block;
+}
+.showdown-panel {
+  margin: 10px 12px 0;
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.showdown-panel .sd-title {
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.showdown-panel .sd-line { margin: 4px 0; color: var(--text); }
+.showdown-panel .sd-you { color: #9fe8b8; }
+.last-action {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #ffe08a;
+  font-weight: 600;
+}

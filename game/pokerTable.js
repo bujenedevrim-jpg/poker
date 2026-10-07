@@ -1,7 +1,7 @@
 'use strict';
 
 const { createDeck, shuffle } = require('./deck');
-const { evaluateHand, compareHands } = require('./handEvaluator');
+const { evaluateHand, compareHands, describeLiveHand } = require('./handEvaluator');
 
 const STARTING_CHIPS = 1000;
 const SMALL_BLIND = 10;
@@ -17,6 +17,16 @@ const PHASES = {
   RIVER: 'river',
   SHOWDOWN: 'showdown',
   HAND_OVER: 'hand_over',
+};
+
+const PHASE_TR = {
+  lobby: 'Lobi',
+  preflop: 'Ön bahis',
+  flop: 'Flop',
+  turn: 'Turn',
+  river: 'River',
+  showdown: 'Gösterim',
+  hand_over: 'El bitti',
 };
 
 function makeCode() {
@@ -48,11 +58,13 @@ class PokerTable {
     this.winners = [];
     this.showCards = false;
     this.streetActed = new Set();
+    /** @type {null|{playerId:string,nickname:string,type:string,amount:number,raiseBy:number,toAmount:number,text:string}} */
+    this.lastAction = null;
   }
 
   addPlayer(id, nickname) {
     if (this.players.length >= MAX_PLAYERS) {
-      return { ok: false, error: 'Masa dolu (max 9).' };
+      return { ok: false, error: 'Masa dolu (en fazla 9).' };
     }
     if (this.players.some((p) => p.id === id)) {
       return { ok: true };
@@ -84,7 +96,16 @@ class PokerTable {
     if (inHand && !removed.folded) {
       removed.folded = true;
       removed.connected = false;
-      this.message = `${removed.nickname} ayrıldı (fold).`;
+      this.message = `${removed.nickname} ayrıldı (çekildi).`;
+      this.lastAction = {
+        playerId: removed.id,
+        nickname: removed.nickname,
+        type: 'fold',
+        amount: 0,
+        raiseBy: 0,
+        toAmount: removed.bet,
+        text: `${removed.nickname} ayrıldı (çekildi)`,
+      };
       if (idx === this.actionIndex) {
         this._advanceAfterAction(false);
       } else {
@@ -93,7 +114,6 @@ class PokerTable {
           this._awardPot(alive, 'Tek kalan oyuncu');
         }
       }
-      // Keep seat until hand ends to preserve indices
       removed.holeCards = [];
     } else {
       this.players.splice(idx, 1);
@@ -104,11 +124,6 @@ class PokerTable {
       if (this.dealerIndex >= this.players.length) {
         this.dealerIndex = this.players.length - 1;
       }
-    }
-
-    const present = this.players.filter((p) => p.connected);
-    if (present.length < MIN_PLAYERS && inHand) {
-      // continue with folds; if only one left already handled
     }
   }
 
@@ -141,7 +156,7 @@ class PokerTable {
     this.purgeDisconnected();
     const seated = this.players.filter((p) => p.connected && p.chips > 0);
     if (seated.length < MIN_PLAYERS) {
-      return { ok: false, error: 'En az 2 chip\'li oyuncu gerekli.' };
+      return { ok: false, error: "En az 2 chip'li oyuncu gerekli." };
     }
 
     this.handNumber += 1;
@@ -152,6 +167,7 @@ class PokerTable {
     this.winners = [];
     this.showCards = false;
     this.streetActed = new Set();
+    this.lastAction = null;
     this.deck = shuffle(createDeck());
 
     for (const p of this.players) {
@@ -162,7 +178,6 @@ class PokerTable {
       p.allIn = false;
     }
 
-    // Dealer rotates among players with chips
     if (this.dealerIndex < 0 || this.dealerIndex >= this.players.length) {
       this.dealerIndex = this._firstWithChips();
     } else {
@@ -183,7 +198,6 @@ class PokerTable {
     this.currentBet = this.players[this.bbIndex].bet;
     this.minRaise = BIG_BLIND;
 
-    // Deal hole cards starting from SB
     for (let r = 0; r < 2; r++) {
       let i = this.sbIndex;
       for (let n = 0; n < this.players.length; n++) {
@@ -195,11 +209,8 @@ class PokerTable {
 
     this.phase = PHASES.PREFLOP;
     this.actionIndex = this._nextCanAct(this.bbIndex);
-    // BB has "acted" via blind only for limped pots — they still need option if all limp.
-    // streetActed empty so BB gets chance after everyone acts.
     this.streetActed = new Set();
-    // SB and others who posted blinds haven't voluntarily acted
-    this.message = `El #${this.handNumber} — Preflop`;
+    this.message = `El #${this.handNumber} — Ön bahis`;
     return { ok: true };
   }
 
@@ -216,7 +227,6 @@ class PokerTable {
       const i = (from + s) % n;
       const p = this.players[i];
       if (p.connected && p.chips > 0 && !p.folded) return i;
-      // During dealer advance before folded flags: use chips
       if (p.connected && p.chips > 0) return i;
     }
     return from;
@@ -227,7 +237,6 @@ class PokerTable {
     for (let s = 1; s <= n; s++) {
       const i = (from + s) % n;
       const p = this.players[i];
-      // Disconnected players still hold their seat/turn — hand waits for reconnect
       if (!p.folded && !p.allIn) return i;
     }
     return -1;
@@ -241,6 +250,19 @@ class PokerTable {
     p.totalBet += pay;
     this.pot += pay;
     if (p.chips === 0) p.allIn = true;
+  }
+
+  _setLastAction(player, type, amount, raiseBy, toAmount, text) {
+    this.lastAction = {
+      playerId: player.id,
+      nickname: player.nickname,
+      type,
+      amount: amount || 0,
+      raiseBy: raiseBy || 0,
+      toAmount: toAmount != null ? toAmount : player.bet,
+      text,
+    };
+    this.message = text;
   }
 
   playerAction(playerId, action, raiseTo) {
@@ -266,13 +288,36 @@ class PokerTable {
 
     if (action === 'fold') {
       player.folded = true;
-      this.message = `${player.nickname} fold.`;
+      this._setLastAction(
+        player,
+        'fold',
+        0,
+        0,
+        player.bet,
+        `${player.nickname} çekildi`
+      );
     } else if (action === 'check') {
-      if (toCall > 0) return { ok: false, error: 'Check yok; call veya fold.' };
-      this.message = `${player.nickname} check.`;
+      if (toCall > 0) {
+        return { ok: false, error: 'Pas yok; gör veya çekil.' };
+      }
+      this._setLastAction(
+        player,
+        'check',
+        0,
+        0,
+        player.bet,
+        `${player.nickname} pas geçti`
+      );
     } else if (action === 'call') {
       if (toCall <= 0) {
-        this.message = `${player.nickname} check.`;
+        this._setLastAction(
+          player,
+          'check',
+          0,
+          0,
+          player.bet,
+          `${player.nickname} pas geçti`
+        );
       } else {
         const pay = Math.min(toCall, player.chips);
         player.chips -= pay;
@@ -280,7 +325,14 @@ class PokerTable {
         player.totalBet += pay;
         this.pot += pay;
         if (player.chips === 0) player.allIn = true;
-        this.message = `${player.nickname} call (${pay}).`;
+        this._setLastAction(
+          player,
+          'call',
+          pay,
+          0,
+          player.bet,
+          `${player.nickname} ${pay} gördü`
+        );
       }
     } else if (action === 'raise') {
       let target = Number(raiseTo);
@@ -293,13 +345,13 @@ class PokerTable {
       if (target > maxTotal) target = maxTotal;
       const isAllIn = target === maxTotal;
       if (target < minTotal && !isAllIn) {
-        return { ok: false, error: `Min raise: ${minTotal}` };
+        return { ok: false, error: `Minimum artırma: ${minTotal}` };
       }
       if (target <= this.currentBet && !isAllIn) {
-        return { ok: false, error: 'Raise daha yüksek olmalı.' };
+        return { ok: false, error: 'Artırma daha yüksek olmalı.' };
       }
       const need = target - player.bet;
-      if (need <= 0) return { ok: false, error: 'Geçersiz raise.' };
+      if (need <= 0) return { ok: false, error: 'Geçersiz artırma.' };
       if (need > player.chips) return { ok: false, error: 'Yetersiz chip.' };
 
       const prev = this.currentBet;
@@ -309,13 +361,21 @@ class PokerTable {
       this.pot += need;
       if (player.chips === 0) player.allIn = true;
 
+      let raiseBy = 0;
       if (player.bet > prev) {
-        const raiseSize = player.bet - prev;
-        if (raiseSize >= this.minRaise) this.minRaise = raiseSize;
+        raiseBy = player.bet - prev;
+        if (raiseBy >= this.minRaise) this.minRaise = raiseBy;
         this.currentBet = player.bet;
         raised = true;
       }
-      this.message = `${player.nickname} raise → ${player.bet}`;
+
+      let text;
+      if (prev === 0) {
+        text = `${player.nickname} ${need} bahis koydu`;
+      } else {
+        text = `${player.nickname} ${raiseBy} artırdı (${player.bet}'e yükseltti)`;
+      }
+      this._setLastAction(player, prev === 0 ? 'bet' : 'raise', need, raiseBy, player.bet, text);
     } else if (action === 'allin') {
       const need = player.chips;
       if (need <= 0) return { ok: false, error: 'Chip yok.' };
@@ -325,20 +385,26 @@ class PokerTable {
       this.pot += need;
       player.chips = 0;
       player.allIn = true;
+      let raiseBy = 0;
       if (player.bet > prev) {
-        const raiseSize = player.bet - prev;
-        if (raiseSize >= this.minRaise) this.minRaise = raiseSize;
+        raiseBy = player.bet - prev;
+        if (raiseBy >= this.minRaise) this.minRaise = raiseBy;
         this.currentBet = player.bet;
         raised = true;
       }
-      this.message = `${player.nickname} ALL-IN!`;
+      let text;
+      if (player.bet > prev) {
+        text = `${player.nickname} ALL-IN! ${raiseBy} artırdı (${player.bet}'e)`;
+      } else {
+        text = `${player.nickname} ALL-IN! (${need} koydu)`;
+      }
+      this._setLastAction(player, 'allin', need, raiseBy, player.bet, text);
     } else {
       return { ok: false, error: 'Bilinmeyen aksiyon.' };
     }
 
     this.streetActed.add(player.id);
     if (raised) {
-      // Others must respond again
       this.streetActed = new Set([player.id]);
     }
 
@@ -349,13 +415,11 @@ class PokerTable {
   _advanceAfterAction(fromAction) {
     const alive = this.players.filter((p) => !p.folded);
     if (alive.length === 1) {
-      this._awardPot(alive, `${alive[0].nickname} kazandı (diğerleri fold)`);
+      this._awardPot(alive, `${alive[0].nickname} kazandı (diğerleri çekildi)`);
       return;
     }
 
-    const canAct = this.players.filter(
-      (p) => !p.folded && !p.allIn
-    );
+    const canAct = this.players.filter((p) => !p.folded && !p.allIn);
 
     if (canAct.length === 0) {
       this._runOutBoard();
@@ -375,7 +439,6 @@ class PokerTable {
       return;
     }
 
-    // Street complete
     this._goNextStreet();
   }
 
@@ -389,17 +452,17 @@ class PokerTable {
       this.deck.pop();
       this.community.push(this.deck.pop(), this.deck.pop(), this.deck.pop());
       this.phase = PHASES.FLOP;
-      this.message = 'Flop';
+      this.message = 'Flop açıldı';
     } else if (this.phase === PHASES.FLOP) {
       this.deck.pop();
       this.community.push(this.deck.pop());
       this.phase = PHASES.TURN;
-      this.message = 'Turn';
+      this.message = 'Turn açıldı';
     } else if (this.phase === PHASES.TURN) {
       this.deck.pop();
       this.community.push(this.deck.pop());
       this.phase = PHASES.RIVER;
-      this.message = 'River';
+      this.message = 'River açıldı';
     } else if (this.phase === PHASES.RIVER) {
       this._showdown();
       return;
@@ -415,7 +478,7 @@ class PokerTable {
 
   _runOutBoard() {
     while (this.community.length < 5) {
-      this.deck.pop(); // burn
+      this.deck.pop();
       if (this.community.length === 0) {
         this.community.push(this.deck.pop(), this.deck.pop(), this.deck.pop());
       } else {
@@ -430,7 +493,7 @@ class PokerTable {
     this.showCards = true;
     const contenders = this.players.filter((p) => !p.folded);
     if (contenders.length === 1) {
-      this._awardPot(contenders, 'Fold ile');
+      this._awardPot(contenders, 'Çekilmelerle');
       return;
     }
     const evaluated = contenders.map((p) => ({
@@ -448,7 +511,7 @@ class PokerTable {
         return `${w.nickname} (${h.name})`;
       })
       .join(', ');
-    this._awardPot(winners, `Showdown: ${detail}`);
+    this._awardPot(winners, `Gösterim: ${detail}`);
   }
 
   _awardPot(winners, reason) {
@@ -462,20 +525,54 @@ class PokerTable {
         rem -= 1;
       }
       w.chips += amt;
-      return { id: w.id, nickname: w.nickname, amount: amt };
+      let handName = null;
+      let handCards = null;
+      if (
+        w.holeCards &&
+        w.holeCards.length === 2 &&
+        this.community.length >= 5
+      ) {
+        const h = evaluateHand([...w.holeCards, ...this.community]);
+        handName = h.name;
+        handCards = h.cards;
+      }
+      return {
+        id: w.id,
+        nickname: w.nickname,
+        amount: amt,
+        handName,
+        handCards,
+      };
     });
     this.message = `${reason}. Pot: ${total}`;
     this.pot = 0;
     this.phase = PHASES.HAND_OVER;
     this.actionIndex = -1;
     this.showCards = true;
-    // Keep disconnected seats until grace expires or next hand purge
   }
 
   getPublicState(forPlayerId) {
+    const me = this.players.find((p) => p.id === forPlayerId);
+    let yourLiveHand = null;
+    let yourShowdownHand = null;
+    if (me && me.holeCards.length === 2 && !me.folded) {
+      yourLiveHand = describeLiveHand(me.holeCards, this.community);
+      if (
+        (this.phase === PHASES.HAND_OVER || this.phase === PHASES.SHOWDOWN) &&
+        this.community.length >= 5
+      ) {
+        const h = evaluateHand([...me.holeCards, ...this.community]);
+        yourShowdownHand = { name: h.name, cards: h.cards, rank: h.rank };
+      }
+    } else if (me && me.holeCards.length === 2 && me.folded) {
+      // Still show what they had folded with during hand if cards known
+      yourLiveHand = describeLiveHand(me.holeCards, this.community);
+    }
+
     return {
       code: this.code,
       phase: this.phase,
+      phaseLabel: PHASE_TR[this.phase] || this.phase,
       pot: this.pot,
       community: this.community.slice(),
       currentBet: this.currentBet,
@@ -486,19 +583,25 @@ class PokerTable {
       actionIndex: this.actionIndex,
       handNumber: this.handNumber,
       message: this.message,
+      lastAction: this.lastAction,
       winners: this.winners,
       hostId: this.hostId,
       showCards: this.showCards,
       you: forPlayerId,
       canStart: this.canStart(),
       startingChips: STARTING_CHIPS,
+      yourLiveHand,
+      yourShowdownHand,
       players: this.players.map((p, i) => {
         const isYou = p.id === forPlayerId;
         const reveal =
           isYou ||
           ((this.showCards || this.phase === PHASES.HAND_OVER) && !p.folded);
         let handName = null;
-        if (
+        if (isYou && p.holeCards.length === 2) {
+          const live = describeLiveHand(p.holeCards, this.community);
+          handName = live ? live.name : null;
+        } else if (
           reveal &&
           p.holeCards.length === 2 &&
           this.community.length >= 3 &&
@@ -558,4 +661,5 @@ module.exports = {
   MIN_PLAYERS,
   MAX_PLAYERS,
   PHASES,
+  PHASE_TR,
 };

@@ -7,18 +7,33 @@ const HAND_NAMES = [
   'Çift',
   'İki Çift',
   'Üçlü',
-  'Kent',
+  'Sokak',
   'Renk',
   'Full House',
   'Dörtlü',
-  'Straight Flush',
+  'Renkli Sokak',
   'Royal Flush',
 ];
+
+const RANK_TR = {
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  '5': '5',
+  '6': '6',
+  '7': '7',
+  '8': '8',
+  '9': '9',
+  T: '10',
+  J: 'Vale',
+  Q: 'Kız',
+  K: 'Papaz',
+  A: 'As',
+};
 
 /**
  * Evaluate best 5-card hand from up to 7 cards.
  * Returns { rank: 0-9, values: number[], name: string, cards: string[] }
- * Higher rank wins; on tie compare values lexicographically (high first).
  */
 function evaluateHand(cards) {
   if (!cards || cards.length < 5) {
@@ -72,7 +87,7 @@ function scoreFive(cards) {
   let values;
 
   if (isStraight && isFlush) {
-    rank = straightHigh === 12 ? 9 : 8; // Royal or SF
+    rank = straightHigh === 12 ? 9 : 8;
     values = [straightHigh];
   } else if (byCount[0].c === 4) {
     rank = 7;
@@ -113,12 +128,10 @@ function scoreFive(cards) {
 /** Wheel (A-2-3-4-5) counts as high=3 (5). */
 function findStraightHigh(uniqueSortedDesc) {
   if (uniqueSortedDesc.length < 5) return null;
-  // Check normal straights
   for (let i = 0; i <= uniqueSortedDesc.length - 5; i++) {
     const slice = uniqueSortedDesc.slice(i, i + 5);
     if (slice[0] - slice[4] === 4) return slice[0];
   }
-  // A-2-3-4-5 (wheel): ranks 12,3,2,1,0
   const set = new Set(uniqueSortedDesc);
   if ([12, 3, 2, 1, 0].every((r) => set.has(r))) return 3;
   return null;
@@ -139,10 +152,71 @@ function rankLabel(rankIndex) {
   return RANKS[rankIndex] || '?';
 }
 
+function rankLabelTR(rankChar) {
+  return RANK_TR[rankChar] || rankChar;
+}
+
+/**
+ * Live hand description for hole + community (any street).
+ * Preflop (<5 cards): pair / high card + suited/connector hints.
+ * Flop+: full evaluateHand ranking in Turkish.
+ */
+function describeLiveHand(holeCards, community) {
+  if (!holeCards || holeCards.length < 2) return null;
+  const hole = holeCards.filter((c) => c && c !== 'back' && c !== '??');
+  if (hole.length < 2) return null;
+
+  const board = (community || []).filter((c) => c && c !== 'back');
+  const all = [...hole, ...board];
+
+  if (all.length >= 5) {
+    const scored = evaluateHand(all);
+    return {
+      rank: scored.rank,
+      name: scored.name,
+      cards: scored.cards,
+      detail: scored.name,
+    };
+  }
+
+  // Preflop (2 cards) — or rare incomplete board
+  const r1 = cardRank(hole[0]);
+  const r2 = cardRank(hole[1]);
+  const s1 = cardSuit(hole[0]);
+  const s2 = cardSuit(hole[1]);
+  const v1 = rankValue(r1);
+  const v2 = rankValue(r2);
+  const high = Math.max(v1, v2);
+  const low = Math.min(v1, v2);
+  const suited = s1 === s2;
+  const gap = high - low;
+
+  if (r1 === r2) {
+    const name = `Çift (${rankLabelTR(r1)})`;
+    return { rank: 1, name, cards: hole.slice(), detail: name };
+  }
+
+  let name = `Yüksek Kart (${rankLabelTR(RANKS[high])})`;
+  const extras = [];
+  if (suited) extras.push('aynı renk');
+  if (gap === 1) extras.push('ardışık');
+  else if (gap === 2) extras.push('tek boşluk');
+  if (extras.length) name += ' — ' + extras.join(', ');
+  return { rank: 0, name, cards: hole.slice(), detail: name };
+}
+
+function handNameTR(rankIndex) {
+  if (rankIndex < 0 || rankIndex >= HAND_NAMES.length) return 'Geçersiz';
+  return HAND_NAMES[rankIndex];
+}
+
 module.exports = {
   HAND_NAMES,
   evaluateHand,
   compareHands,
   scoreFive,
   rankLabel,
+  rankLabelTR,
+  describeLiveHand,
+  handNameTR,
 };

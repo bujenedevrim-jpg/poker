@@ -5,11 +5,11 @@ const RANK_SHOW = { T: '10', J: 'J', Q: 'Q', K: 'K', A: 'A' };
 
 const phaseTR = {
   lobby: 'Lobi',
-  preflop: 'Preflop',
+  preflop: 'Ön bahis',
   flop: 'Flop',
   turn: 'Turn',
   river: 'River',
-  showdown: 'Showdown',
+  showdown: 'Gösterim',
   hand_over: 'El bitti',
 };
 
@@ -19,6 +19,7 @@ const socket = io({ transports: ['websocket', 'polling'] });
 
 let state = null;
 let myId = null;
+let lastActionKey = '';
 
 /** Unique per browser tab — never shared across tabs */
 function getPlayerId() {
@@ -34,7 +35,6 @@ function getPlayerId() {
   return id;
 }
 
-/** Form value only — localStorage is a suggestion, not identity */
 function nick() {
   return ($('nickname').value || '').trim();
 }
@@ -58,7 +58,7 @@ function toast(msg) {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => {
     el.hidden = true;
-  }, 2800);
+  }, 3200);
 }
 
 function parseRoomFromUrl() {
@@ -103,6 +103,18 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+function formatCards(codes) {
+  if (!codes || !codes.length) return '';
+  return codes
+    .map((c) => {
+      if (!c || c === 'back') return '?';
+      const r = RANK_SHOW[c[0]] || c[0];
+      const s = SUIT_SYM[c[1]] || c[1];
+      return r + s;
+    })
+    .join(' ');
+}
+
 function renderSeats(players) {
   const root = $('seats');
   root.innerHTML = '';
@@ -127,9 +139,9 @@ function renderSeats(players) {
 
     const tags = [];
     if (p.isDealer) tags.push('D');
-    if (p.isSB) tags.push('SB');
+    if (p.isSB) tags.push('KB');
     if (p.isBB) tags.push('BB');
-    if (p.isHost) tags.push('Host');
+    if (p.isHost) tags.push('Ev sahibi');
     if (p.allIn) tags.push('ALL-IN');
     if (p.connected === false) tags.push('…');
 
@@ -154,10 +166,10 @@ function renderCommunity(cards) {
   (cards || []).forEach((c) => el.appendChild(cardEl(c, false)));
 }
 
-function renderHole(players) {
+function renderHole(s) {
   const row = $('hole-row');
   row.innerHTML = '';
-  const me = (players || []).find((p) => p.id === myId);
+  const me = (s.players || []).find((p) => p.id === myId);
   if (!me) return;
   const wrap = document.createElement('div');
   wrap.style.textAlign = 'center';
@@ -169,13 +181,94 @@ function renderHole(players) {
     if (c !== 'back') cards.appendChild(cardEl(c, false));
   });
   wrap.appendChild(cards);
-  if (me.handName) {
+
+  const liveName =
+    (s.yourLiveHand && s.yourLiveHand.name) ||
+    me.handName ||
+    null;
+  if (liveName && me.holeCards && me.holeCards.length === 2) {
     const lab = document.createElement('div');
-    lab.className = 'hand-label';
-    lab.textContent = me.handName;
+    lab.className = 'hand-strength';
+    lab.textContent = 'Elim: ' + liveName;
     wrap.appendChild(lab);
   }
   row.appendChild(wrap);
+}
+
+function renderShowdown(s) {
+  const panel = $('showdown-panel');
+  const isEnd = s.phase === 'hand_over' || s.phase === 'showdown';
+  if (!isEnd || !s.winners || !s.winners.length) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+  panel.hidden = false;
+  const lines = [];
+  lines.push('<div class="sd-title">El sonucu</div>');
+  for (const w of s.winners) {
+    const handBit = w.handName
+      ? ` — <strong>${escapeHtml(w.handName)}</strong>` +
+        (w.handCards ? ` (${escapeHtml(formatCards(w.handCards))})` : '')
+      : '';
+    lines.push(
+      `<div class="sd-line">🏆 ${escapeHtml(w.nickname)} kazandı: ${w.amount} chip${handBit}</div>`
+    );
+  }
+  if (s.yourShowdownHand && s.yourShowdownHand.name) {
+    const isWinner = (s.winners || []).some((w) => w.id === myId);
+    const prefix = isWinner ? 'Senin elin' : 'Senin elin (kazanmadı)';
+    lines.push(
+      `<div class="sd-line sd-you">${prefix}: <strong>${escapeHtml(
+        s.yourShowdownHand.name
+      )}</strong>` +
+        (s.yourShowdownHand.cards
+          ? ` (${escapeHtml(formatCards(s.yourShowdownHand.cards))})`
+          : '') +
+        '</div>'
+    );
+  } else {
+    const me = (s.players || []).find((p) => p.id === myId);
+    if (me && me.folded) {
+      lines.push('<div class="sd-line sd-you">Sen çekilmiştin.</div>');
+    }
+  }
+  panel.innerHTML = lines.join('');
+}
+
+function renderLastAction(s) {
+  const el = $('last-action');
+  if (!s.lastAction || !s.lastAction.text) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.hidden = false;
+  el.textContent = s.lastAction.text + (s.pot > 0 ? ` · Pot: ${s.pot}` : '');
+
+  // Toast on new raise/bet/all-in so amount is obvious
+  const key =
+    (s.lastAction.playerId || '') +
+    '|' +
+    (s.lastAction.type || '') +
+    '|' +
+    (s.lastAction.toAmount || 0) +
+    '|' +
+    (s.lastAction.amount || 0) +
+    '|' +
+    (s.handNumber || 0);
+  if (
+    key !== lastActionKey &&
+    (s.lastAction.type === 'raise' ||
+      s.lastAction.type === 'bet' ||
+      s.lastAction.type === 'allin' ||
+      s.lastAction.type === 'call')
+  ) {
+    lastActionKey = key;
+    toast(s.lastAction.text);
+  } else if (key !== lastActionKey) {
+    lastActionKey = key;
+  }
 }
 
 function renderActions(legal) {
@@ -191,9 +284,10 @@ function renderActions(legal) {
   $('btn-call').disabled = !legal.canCall;
   $('btn-call').hidden = !legal.canCall;
   $('btn-call').textContent = legal.canCall
-    ? `Call ${legal.callAmount}`
-    : 'Call';
+    ? `Gör ${legal.callAmount}`
+    : 'Gör';
   $('btn-raise').disabled = !legal.canRaise;
+  $('btn-raise').textContent = 'Artır';
   $('btn-allin').disabled = !legal.canAllIn;
 
   const slider = $('raise-slider');
@@ -214,13 +308,16 @@ function render(s) {
   showTable();
 
   $('room-code').textContent = s.code;
-  $('phase-badge').textContent = phaseTR[s.phase] || s.phase;
+  $('phase-badge').textContent =
+    s.phaseLabel || phaseTR[s.phase] || s.phase;
   $('pot').textContent = s.pot;
   $('table-msg').textContent = s.message || '';
 
   renderCommunity(s.community);
   renderSeats(s.players);
-  renderHole(s.players);
+  renderHole(s);
+  renderShowdown(s);
+  renderLastAction(s);
   renderActions(s.legalActions);
 
   const isHost = s.hostId === myId;
@@ -306,7 +403,6 @@ socket.on('error_msg', (msg) => {
 });
 
 socket.on('connect', () => {
-  // Prefill nick as suggestion only (shared across tabs — not identity)
   const saved = localStorage.getItem('poker_nick');
   if (saved && !$('nickname').value) $('nickname').value = saved;
 
@@ -314,8 +410,6 @@ socket.on('connect', () => {
   const savedRoom = sessionStorage.getItem('poker_room');
   if (roomFromUrl) $('join-code').value = roomFromUrl;
 
-  // Auto-rejoin only when THIS TAB was already in the room (sessionStorage).
-  // New tabs get a fresh playerId and must join manually (or via form).
   if (savedRoom) {
     const n = nick() || saved || 'Oyuncu';
     if (!$('nickname').value) $('nickname').value = n;
@@ -327,7 +421,6 @@ socket.on('connect', () => {
   }
 });
 
-// Prefill nickname default
 if (!localStorage.getItem('poker_nick')) {
   $('nickname').placeholder = 'Örn. Ali';
 }
