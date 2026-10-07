@@ -41,9 +41,12 @@
         <div id="phase-badge" class="badge">Lobi</div>
       </header>
 
+      <div id="turn-banner" class="turn-banner" hidden></div>
+
       <div class="table-wrap">
         <div class="felt">
           <div class="pot-area">
+            <div id="pot-chips" class="pot-chips" aria-hidden="true"></div>
             <div class="pot">Pot: <span id="pot">0</span></div>
             <div id="last-action" class="last-action" hidden></div>
             <div id="community" class="community"></div>
@@ -56,6 +59,14 @@
       <div id="showdown-panel" class="showdown-panel" hidden></div>
 
       <div id="hole-row" class="hole-row"></div>
+
+      <div id="reveal-bar" class="reveal-bar" hidden>
+        <p class="reveal-hint">Kartlarını göster veya gizle</p>
+        <div class="reveal-btns">
+          <button id="btn-show" class="btn primary" type="button">Göster</button>
+          <button id="btn-muck" class="btn danger" type="button">Gizle</button>
+        </div>
+      </div>
 
       <div id="actions" class="actions" hidden>
         <div class="raise-row">

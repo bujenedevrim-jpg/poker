@@ -476,3 +476,74 @@ html, body {
   color: #ffe08a;
   font-weight: 600;
 }
+
+/* Turn banner — whose turn */
+.turn-banner {
+  text-align: center;
+  padding: 8px 12px;
+  margin: 0;
+  background: linear-gradient(90deg, rgba(232,197,71,0.12), rgba(232,197,71,0.28), rgba(232,197,71,0.12));
+  border-bottom: 1px solid rgba(232,197,71,0.35);
+  color: var(--gold);
+  font-weight: 750;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  animation: pulse-turn 1.6s ease-in-out infinite;
+}
+.turn-banner.you-turn {
+  background: linear-gradient(90deg, rgba(26,122,60,0.25), rgba(26,122,60,0.5), rgba(26,122,60,0.25));
+  border-bottom-color: rgba(100,220,140,0.5);
+  color: #b8ffd0;
+}
+@keyframes pulse-turn {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.78; }
+}
+
+/* Pot chip stack */
+.pot-chips {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 28px;
+  margin-bottom: 4px;
+  position: relative;
+  min-height: 8px;
+}
+.chip-disc {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255,255,255,0.55);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.45), inset 0 0 0 3px rgba(0,0,0,0.15);
+  margin-left: -10px;
+  position: relative;
+  z-index: calc(1 + var(--chip-i, 0));
+  transform: translateY(calc(var(--chip-i, 0) * -1.5px));
+}
+.chip-disc:first-child { margin-left: 0; }
+
+/* Reveal (Göster / Gizle) bar */
+.reveal-bar {
+  padding: 10px 12px calc(10px + var(--safe-bottom));
+  background: rgba(0,0,0,0.55);
+  border-top: 1px solid rgba(232,197,71,0.3);
+  text-align: center;
+}
+.reveal-hint {
+  margin: 0 0 8px;
+  color: var(--gold);
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+.reveal-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.reveal-btns .btn { margin: 0; }
+.showdown-panel .sd-wait {
+  color: #ffe08a;
+  font-style: italic;
+  margin-top: 6px;
+}

@@ -158,6 +158,17 @@ io.on('connection', (socket) => {
     broadcastRoom(table);
   });
 
+  socket.on('reveal_hand', ({ choice } = {}) => {
+    const table = getRoom(socket.data.roomCode);
+    if (!table) return;
+    const result = table.revealHand(socket.data.playerId, choice);
+    if (!result.ok) {
+      socket.emit('error_msg', result.error);
+      return;
+    }
+    broadcastRoom(table);
+  });
+
   socket.on('disconnect', () => {
     const code = socket.data.roomCode;
     const pid = socket.data.playerId;

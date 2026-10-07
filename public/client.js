@@ -144,6 +144,8 @@ function renderSeats(players) {
     if (p.isHost) tags.push('Ev sahibi');
     if (p.allIn) tags.push('Hepsi');
     if (p.connected === false) tags.push('…');
+    if (p.revealChoice === 'show') tags.push('Gösterdi');
+    if (p.revealChoice === 'muck') tags.push('Gizledi');
 
     seat.innerHTML = `
       <div class="seat-name">${escapeHtml(p.nickname)}</div>
@@ -207,10 +209,16 @@ function renderShowdown(s) {
   const lines = [];
   lines.push('<div class="sd-title">El sonucu</div>');
   for (const w of s.winners) {
-    const handBit = w.handName
-      ? ` — <strong>${escapeHtml(w.handName)}</strong>` +
-        (w.handCards ? ` (${escapeHtml(formatCards(w.handCards))})` : '')
-      : '';
+    let handBit = '';
+    if (w.handName) {
+      handBit =
+        ` — <strong>${escapeHtml(w.handName)}</strong>` +
+        (w.handCards ? ` (${escapeHtml(formatCards(w.handCards))})` : '');
+    } else if (w.mucked) {
+      handBit = ' — <em>kartlar gizli</em>';
+    } else if (s.awaitingReveal) {
+      handBit = ' — <em>seçim bekleniyor…</em>';
+    }
     lines.push(
       `<div class="sd-line">🏆 ${escapeHtml(w.nickname)} kazandı: ${w.amount} chip${handBit}</div>`
     );
@@ -233,7 +241,65 @@ function renderShowdown(s) {
       lines.push('<div class="sd-line sd-you">Sen çekilmiştin.</div>');
     }
   }
+  if (s.awaitingReveal) {
+    lines.push(
+      '<div class="sd-line sd-wait">Kalan oyuncular kartlarını gösteriyor veya gizliyor…</div>'
+    );
+  }
   panel.innerHTML = lines.join('');
+}
+
+function renderTurnBanner(s) {
+  const el = $('turn-banner');
+  if (!el) return;
+  const betting = ['preflop', 'flop', 'turn', 'river'].includes(s.phase);
+  if (betting && s.turnNickname) {
+    el.hidden = false;
+    const isMe = s.actionIndex >= 0 && s.you && (s.players || []).some(
+      (p) => p.id === s.you && p.isTurn
+    );
+    el.textContent = isMe
+      ? 'Sen düşünüyorsun…'
+      : `${s.turnNickname} düşünüyor…`;
+    el.classList.toggle('you-turn', !!isMe);
+  } else if (s.awaitingReveal) {
+    el.hidden = false;
+    el.classList.remove('you-turn');
+    el.textContent = 'Kart gösterimi: Göster veya Gizle';
+  } else {
+    el.hidden = true;
+    el.textContent = '';
+    el.classList.remove('you-turn');
+  }
+}
+
+function renderPotChips(pot) {
+  const el = $('pot-chips');
+  if (!el) return;
+  el.innerHTML = '';
+  const n = Number(pot) || 0;
+  if (n <= 0) return;
+  // Scale stack: 1 chip per ~40, min 1 max 12
+  let count = Math.min(12, Math.max(1, Math.ceil(n / 40)));
+  const colors = ['#c0392b', '#2980b9', '#27ae60', '#f1c40f', '#8e44ad', '#ecf0f1'];
+  for (let i = 0; i < count; i++) {
+    const chip = document.createElement('span');
+    chip.className = 'chip-disc';
+    chip.style.setProperty('--chip-i', String(i));
+    chip.style.background = colors[i % colors.length];
+    chip.style.color = colors[i % colors.length] === '#ecf0f1' || colors[i % colors.length] === '#f1c40f' ? '#222' : '#fff';
+    el.appendChild(chip);
+  }
+}
+
+function renderReveal(legal) {
+  const bar = $('reveal-bar');
+  if (!bar) return;
+  if (!legal) {
+    bar.hidden = true;
+    return;
+  }
+  bar.hidden = false;
 }
 
 function renderLastAction(s) {
@@ -313,12 +379,15 @@ function render(s) {
   $('pot').textContent = s.pot;
   $('table-msg').textContent = s.message || '';
 
+  renderPotChips(s.pot);
+  renderTurnBanner(s);
   renderCommunity(s.community);
   renderSeats(s.players);
   renderHole(s);
   renderShowdown(s);
   renderLastAction(s);
   renderActions(s.legalActions);
+  renderReveal(s.legalReveal);
 
   const isHost = s.hostId === myId;
   const hostBar = $('host-bar');
@@ -374,6 +443,9 @@ $('btn-raise').onclick = () => {
   socket.emit('action', { action: 'raise', raiseTo });
 };
 $('btn-allin').onclick = () => socket.emit('action', { action: 'allin' });
+
+$('btn-show').onclick = () => socket.emit('reveal_hand', { choice: 'show' });
+$('btn-muck').onclick = () => socket.emit('reveal_hand', { choice: 'muck' });
 
 $('btn-copy').onclick = async () => {
   const code = state && state.code;

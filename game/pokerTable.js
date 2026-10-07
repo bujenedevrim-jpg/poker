@@ -82,6 +82,7 @@ class PokerTable {
     this.message = 'Oda hazır. Oyuncular bekleniyor.';
     this.winners = [];
     this.showCards = false;
+    this.awaitingReveal = false;
     this.streetActed = new Set();
     /** @type {null|{playerId:string,nickname:string,type:string,amount:number,raiseBy:number,toAmount:number,text:string}} */
     this.lastAction = null;
@@ -105,6 +106,7 @@ class PokerTable {
       folded: false,
       allIn: false,
       connected: true,
+      revealChoice: null,
     });
     if (!this.hostId) this.hostId = id;
     this.message = `${nick} masaya katıldı.`;
@@ -170,7 +172,8 @@ class PokerTable {
     return (
       this.players.filter((p) => p.connected && p.chips > 0).length >=
         MIN_PLAYERS &&
-      (this.phase === PHASES.LOBBY || this.phase === PHASES.HAND_OVER)
+      (this.phase === PHASES.LOBBY ||
+        (this.phase === PHASES.HAND_OVER && !this.awaitingReveal))
     );
   }
 
@@ -191,6 +194,7 @@ class PokerTable {
     this.minRaise = BIG_BLIND;
     this.winners = [];
     this.showCards = false;
+    this.awaitingReveal = false;
     this.streetActed = new Set();
     this.lastAction = null;
     this.deck = shuffle(createDeck());
@@ -201,6 +205,7 @@ class PokerTable {
       p.totalBet = 0;
       p.folded = !(p.connected && p.chips > 0);
       p.allIn = false;
+      p.revealChoice = null;
     }
 
     if (this.dealerIndex < 0 || this.dealerIndex >= this.players.length) {
@@ -515,7 +520,6 @@ class PokerTable {
 
   _showdown() {
     this.phase = PHASES.SHOWDOWN;
-    this.showCards = true;
     const contenders = this.players.filter((p) => !p.folded);
     if (contenders.length === 1) {
       this._awardPot(contenders, 'Çekilmelerle');
@@ -530,13 +534,8 @@ class PokerTable {
     const winners = evaluated
       .filter((e) => compareHands(e.hand, best) === 0)
       .map((e) => e.player);
-    const detail = winners
-      .map((w) => {
-        const h = evaluated.find((e) => e.player.id === w.id).hand;
-        return `${w.nickname} (${h.name})`;
-      })
-      .join(', ');
-    this._awardPot(winners, `Gösterim: ${detail}`);
+    const names = winners.map((w) => w.nickname).join(', ');
+    this._awardPot(winners, `Kazanan: ${names}`);
   }
 
   _awardPot(winners, reason) {
@@ -573,7 +572,68 @@ class PokerTable {
     this.pot = 0;
     this.phase = PHASES.HAND_OVER;
     this.actionIndex = -1;
-    this.showCards = true;
+    this.showCards = false;
+    // Remaining players choose Göster / Gizle
+    for (const p of this.players) {
+      if (!p.folded && p.holeCards && p.holeCards.length > 0) {
+        p.revealChoice = null;
+      } else {
+        p.revealChoice = 'muck';
+      }
+    }
+    const needReveal = this.players.filter(
+      (p) => !p.folded && p.holeCards && p.holeCards.length > 0
+    );
+    this.awaitingReveal = needReveal.length > 0;
+    if (this.awaitingReveal) {
+      this.message += ' — Kartlarını göster veya gizle.';
+    }
+  }
+
+  revealHand(playerId, choice) {
+    if (!this.awaitingReveal || this.phase !== PHASES.HAND_OVER) {
+      return { ok: false, error: 'Şu an gösterim yok.' };
+    }
+    const p = this.players.find((x) => x.id === playerId);
+    if (!p || p.folded) {
+      return { ok: false, error: 'Gösterim hakkı yok.' };
+    }
+    if (!p.holeCards || p.holeCards.length === 0) {
+      return { ok: false, error: 'Gösterilecek kart yok.' };
+    }
+    if (p.revealChoice === 'show' || p.revealChoice === 'muck') {
+      return { ok: false, error: 'Zaten seçtin.' };
+    }
+    const c = String(choice || '').toLowerCase();
+    if (c !== 'show' && c !== 'muck') {
+      return { ok: false, error: 'Göster veya gizle seç.' };
+    }
+    p.revealChoice = c;
+    if (c === 'show') {
+      this.message = `${p.nickname} kartlarını gösterdi.`;
+    } else {
+      this.message = `${p.nickname} kartlarını gizledi.`;
+    }
+    const pending = this.players.filter(
+      (x) =>
+        !x.folded &&
+        x.holeCards &&
+        x.holeCards.length > 0 &&
+        x.revealChoice !== 'show' &&
+        x.revealChoice !== 'muck'
+    );
+    if (pending.length === 0) {
+      this.awaitingReveal = false;
+      const showed = this.players.filter((x) => x.revealChoice === 'show');
+      if (showed.length) {
+        this.message =
+          'Herkes seçti. Gösterenler: ' +
+          showed.map((x) => x.nickname).join(', ');
+      } else {
+        this.message = 'Herkes kartlarını gizledi.';
+      }
+    }
+    return { ok: true };
   }
 
   getPublicState(forPlayerId) {
@@ -590,9 +650,26 @@ class PokerTable {
         yourShowdownHand = { name: h.name, cards: h.cards, rank: h.rank };
       }
     } else if (me && me.holeCards.length === 2 && me.folded) {
-      // Still show what they had folded with during hand if cards known
       yourLiveHand = describeLiveHand(me.holeCards, this.community);
     }
+
+    const turnPlayer =
+      this.actionIndex >= 0 ? this.players[this.actionIndex] : null;
+    const turnNickname = turnPlayer ? turnPlayer.nickname : null;
+
+    const publicWinners = (this.winners || []).map((w) => {
+      const wp = this.players.find((p) => p.id === w.id);
+      const showed = wp && wp.revealChoice === 'show';
+      return {
+        id: w.id,
+        nickname: w.nickname,
+        amount: w.amount,
+        handName: showed ? w.handName : null,
+        handCards: showed ? w.handCards : null,
+        revealed: showed,
+        mucked: wp && wp.revealChoice === 'muck',
+      };
+    });
 
     return {
       code: this.code,
@@ -609,9 +686,11 @@ class PokerTable {
       handNumber: this.handNumber,
       message: this.message,
       lastAction: this.lastAction,
-      winners: this.winners,
+      winners: publicWinners,
       hostId: this.hostId,
       showCards: this.showCards,
+      awaitingReveal: this.awaitingReveal,
+      turnNickname,
       you: forPlayerId,
       canStart: this.canStart(),
       startingChips: STARTING_CHIPS,
@@ -619,15 +698,15 @@ class PokerTable {
       yourShowdownHand,
       players: this.players.map((p, i) => {
         const isYou = p.id === forPlayerId;
-        const reveal =
-          isYou ||
-          ((this.showCards || this.phase === PHASES.HAND_OVER) && !p.folded);
+        const showed = p.revealChoice === 'show';
+        const reveal = isYou || (showed && !p.folded);
         let handName = null;
         if (isYou && p.holeCards.length === 2) {
           const live = describeLiveHand(p.holeCards, this.community);
           handName = live ? live.name : null;
         } else if (
           reveal &&
+          !isYou &&
           p.holeCards.length === 2 &&
           this.community.length >= 3 &&
           !p.folded
@@ -649,12 +728,23 @@ class PokerTable {
           isTurn: i === this.actionIndex,
           holeCards: reveal
             ? p.holeCards.slice()
-            : p.holeCards.map(() => 'back'),
+            : (p.holeCards || []).map(() => 'back'),
           handName,
+          revealChoice: isYou ? p.revealChoice : p.revealChoice === 'show' || p.revealChoice === 'muck' ? p.revealChoice : null,
         };
       }),
       legalActions: this._legalActions(forPlayerId),
+      legalReveal: this._legalReveal(forPlayerId),
     };
+  }
+
+  _legalReveal(playerId) {
+    if (!this.awaitingReveal || this.phase !== PHASES.HAND_OVER) return null;
+    const p = this.players.find((x) => x.id === playerId);
+    if (!p || p.folded) return null;
+    if (!p.holeCards || p.holeCards.length === 0) return null;
+    if (p.revealChoice === 'show' || p.revealChoice === 'muck') return null;
+    return { canShow: true, canMuck: true };
   }
 
   _legalActions(playerId) {
