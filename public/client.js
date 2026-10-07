@@ -125,8 +125,8 @@ function renderSeats(players) {
   }
   order.forEach((p, visualIdx) => {
     const angle = Math.PI / 2 + (visualIdx / order.length) * Math.PI * 2;
-    const x = 50 + Math.cos(angle) * 40;
-    const y = 52 + Math.sin(angle) * 34;
+    const x = 50 + Math.cos(angle) * 42;
+    const y = 52 + Math.sin(angle) * 36;
 
     const seat = document.createElement('div');
     seat.className = 'seat';
@@ -280,7 +280,7 @@ function renderPotChips(pot) {
   const n = Number(pot) || 0;
   if (n <= 0) return;
   // Scale stack: 1 chip per ~40, min 1 max 12
-  let count = Math.min(12, Math.max(1, Math.ceil(n / 40)));
+  let count = Math.min(6, Math.max(1, Math.ceil(n / 50)));
   const colors = ['#c0392b', '#2980b9', '#27ae60', '#f1c40f', '#8e44ad', '#ecf0f1'];
   for (let i = 0; i < count; i++) {
     const chip = document.createElement('span');

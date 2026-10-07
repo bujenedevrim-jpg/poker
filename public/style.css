@@ -216,12 +216,21 @@ html, body {
 .pot-area {
   position: absolute;
   left: 50%;
-  top: 38%;
+  top: 48%;
   transform: translate(-50%, -50%);
   text-align: center;
-  width: min(70%, 280px);
+  width: min(58%, 240px);
   z-index: 2;
   pointer-events: none;
+}
+
+.pot-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  max-width: 100%;
 }
 
 .pot {
@@ -231,8 +240,9 @@ html, body {
   border-radius: 999px;
   font-weight: 700;
   color: var(--gold);
-  margin-bottom: 8px;
+  margin-bottom: 0;
   font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
 .community {
@@ -292,6 +302,8 @@ html, body {
 }
 
 .seat-bet {
+  position: relative;
+  z-index: 1;
   font-size: 0.68rem;
   color: #fff;
   margin-top: 2px;
@@ -501,27 +513,27 @@ html, body {
   50% { opacity: 0.78; }
 }
 
-/* Pot chip stack — keep under Pot label, above community, don't cover seats */
+/* Pot chip stack — same row as Pot pill, no upward stack into seats */
 .pot-chips {
   display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  height: 20px;
-  margin: 2px auto 6px;
+  justify-content: flex-end;
+  align-items: center;
+  height: 18px;
+  margin: 0;
   position: relative;
-  max-width: 140px;
+  max-width: 72px;
   overflow: visible;
+  flex-shrink: 1;
 }
 .chip-disc {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px dashed rgba(255,255,255,0.55);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(0,0,0,0.15);
-  margin-left: -8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(0,0,0,0.15);
+  margin-left: -7px;
   position: relative;
   z-index: calc(1 + var(--chip-i, 0));
-  transform: translateY(calc(var(--chip-i, 0) * -1px));
   flex-shrink: 0;
 }
 .chip-disc:first-child { margin-left: 0; }
