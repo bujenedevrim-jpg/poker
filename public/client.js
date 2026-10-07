@@ -126,7 +126,7 @@ function renderSeats(players) {
   order.forEach((p, visualIdx) => {
     const angle = Math.PI / 2 + (visualIdx / order.length) * Math.PI * 2;
     const x = 50 + Math.cos(angle) * 42;
-    const y = 52 + Math.sin(angle) * 36;
+    const y = 50 + Math.sin(angle) * 38;
 
     const seat = document.createElement('div');
     seat.className = 'seat';
