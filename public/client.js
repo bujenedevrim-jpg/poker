@@ -6,9 +6,9 @@ const RANK_SHOW = { T: '10', J: 'J', Q: 'Q', K: 'K', A: 'A' };
 const phaseTR = {
   lobby: 'Lobi',
   preflop: 'Ön bahis',
-  flop: 'Flop',
-  turn: 'Turn',
-  river: 'River',
+  flop: 'Üç kart',
+  turn: 'Dördüncü',
+  river: 'Beşinci',
   showdown: 'Gösterim',
   hand_over: 'El bitti',
 };

@@ -22,9 +22,9 @@ const PHASES = {
 const PHASE_TR = {
   lobby: 'Lobi',
   preflop: 'Ön bahis',
-  flop: 'Flop',
-  turn: 'Turn',
-  river: 'River',
+  flop: 'Üç kart',
+  turn: 'Dördüncü',
+  river: 'Beşinci',
   showdown: 'Gösterim',
   hand_over: 'El bitti',
 };
