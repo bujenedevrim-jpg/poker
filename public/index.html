@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Texas Hold'em — Chip Poker</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Lobby -->
+    <section id="screen-lobby" class="screen">
+      <div class="lobby-card">
+        <h1>♠ Texas Hold'em ♥</h1>
+        <p class="subtitle">Chip ile eğlence — gerçek para yok</p>
+        <label class="field">
+          <span>Takma ad</span>
+          <input id="nickname" type="text" maxlength="16" placeholder="Adın" autocomplete="nickname" />
+        </label>
+        <button id="btn-create" class="btn primary">Oda Oluştur</button>
+        <div class="divider">veya</div>
+        <label class="field">
+          <span>Oda kodu</span>
+          <input id="join-code" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase" />
+        </label>
+        <button id="btn-join" class="btn">Odaya Katıl</button>
+        <p id="lobby-error" class="error" hidden></p>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section id="screen-table" class="screen" hidden>
+      <header class="topbar">
+        <div class="room-info">
+          <span class="label">Oda</span>
+          <strong id="room-code">------</strong>
+          <button id="btn-copy" class="btn tiny" type="button">Link kopyala</button>
+        </div>
+        <div id="phase-badge" class="badge">Lobi</div>
+      </header>
+
+      <div class="table-wrap">
+        <div class="felt">
+          <div class="pot-area">
+            <div class="pot">Pot: <span id="pot">0</span></div>
+            <div id="community" class="community"></div>
+            <p id="table-msg" class="table-msg"></p>
+          </div>
+          <div id="seats" class="seats"></div>
+        </div>
+      </div>
+
+      <div id="hole-row" class="hole-row"></div>
+
+      <div id="actions" class="actions" hidden>
+        <div class="raise-row">
+          <input id="raise-slider" type="range" min="0" max="1000" value="0" />
+          <span id="raise-label">0</span>
+        </div>
+        <div class="action-btns">
+          <button id="btn-fold" class="btn danger">Fold</button>
+          <button id="btn-check" class="btn">Check</button>
+          <button id="btn-call" class="btn">Call</button>
+          <button id="btn-raise" class="btn warn">Raise</button>
+          <button id="btn-allin" class="btn allin">All-in</button>
+        </div>
+      </div>
+
+      <div id="host-bar" class="host-bar" hidden>
+        <button id="btn-start" class="btn primary wide">Eli Başlat</button>
+      </div>
+
+      <p id="toast" class="toast" hidden></p>
+    </section>
+  </div>
+  <script src="/client.js"></script>
+</body>
+</html>
