@@ -29,6 +29,31 @@ const PHASE_TR = {
   hand_over: 'El bitti',
 };
 
+
+function dativeAmount(n) {
+  const x = Number(n) || 0;
+  const special = {
+    0: "'a",
+    10: "'a",
+    20: "'ye",
+    30: "'a",
+    40: "'a",
+    50: "'ye",
+    60: "'a",
+    70: "'e",
+    80: "'e",
+    90: "'a",
+    100: "'e",
+    200: "'e",
+    1000: "'e",
+  };
+  if (special[x] != null) return x + special[x];
+  const last = String(x).slice(-1);
+  if ('069'.includes(last)) return x + "'a";
+  if (last === '0') return x + "'a";
+  return x + "'e";
+}
+
 function makeCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -373,7 +398,7 @@ class PokerTable {
       if (prev === 0) {
         text = `${player.nickname} ${need} bahis koydu`;
       } else {
-        text = `${player.nickname} ${raiseBy} artırdı (${player.bet}'e yükseltti)`;
+        text = `${player.nickname} ${raiseBy} artırdı (${dativeAmount(player.bet)} yükseltti)`;
       }
       this._setLastAction(player, prev === 0 ? 'bet' : 'raise', need, raiseBy, player.bet, text);
     } else if (action === 'allin') {
@@ -394,9 +419,9 @@ class PokerTable {
       }
       let text;
       if (player.bet > prev) {
-        text = `${player.nickname} ALL-IN! ${raiseBy} artırdı (${player.bet}'e)`;
+        text = `${player.nickname} hepsi! ${raiseBy} artırdı (${dativeAmount(player.bet)})`;
       } else {
-        text = `${player.nickname} ALL-IN! (${need} koydu)`;
+        text = `${player.nickname} hepsi! (${need} koydu)`;
       }
       this._setLastAction(player, 'allin', need, raiseBy, player.bet, text);
     } else {

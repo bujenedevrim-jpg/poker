@@ -120,7 +120,7 @@ function scoreFive(cards) {
   return {
     rank,
     values,
-    name: HAND_NAMES[rank],
+    name: formatScoredName(rank, values),
     cards: cards.slice(),
   };
 }
@@ -148,6 +148,35 @@ function compareHands(a, b) {
   return 0;
 }
 
+
+function formatScoredName(rank, values) {
+  const lab = (v) => rankLabelTR(RANKS[v] || rankLabel(v));
+  switch (rank) {
+    case 0:
+      return `Yüksek Kart (${lab(values[0])})`;
+    case 1:
+      return `Çift (${lab(values[0])})`;
+    case 2:
+      return `İki Çift (${lab(values[0])} ve ${lab(values[1])})`;
+    case 3:
+      return `Üçlü (${lab(values[0])})`;
+    case 4:
+      return `Sokak (${lab(values[0])} yüksek)`;
+    case 5:
+      return `Renk (${lab(values[0])} yüksek)`;
+    case 6:
+      return `Full House (${lab(values[0])} dolu ${lab(values[1])})`;
+    case 7:
+      return `Dörtlü (${lab(values[0])})`;
+    case 8:
+      return `Renkli Sokak (${lab(values[0])} yüksek)`;
+    case 9:
+      return 'Royal Flush';
+    default:
+      return HAND_NAMES[rank] || 'Geçersiz';
+  }
+}
+
 function rankLabel(rankIndex) {
   return RANKS[rankIndex] || '?';
 }
@@ -171,11 +200,12 @@ function describeLiveHand(holeCards, community) {
 
   if (all.length >= 5) {
     const scored = evaluateHand(all);
+    const name = scored.name;
     return {
       rank: scored.rank,
-      name: scored.name,
+      name,
       cards: scored.cards,
-      detail: scored.name,
+      detail: name,
     };
   }
 
@@ -219,4 +249,5 @@ module.exports = {
   rankLabelTR,
   describeLiveHand,
   handNameTR,
+  formatScoredName,
 };

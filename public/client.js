@@ -139,10 +139,10 @@ function renderSeats(players) {
 
     const tags = [];
     if (p.isDealer) tags.push('D');
-    if (p.isSB) tags.push('KB');
-    if (p.isBB) tags.push('BB');
+    if (p.isSB) tags.push('Küçük');
+    if (p.isBB) tags.push('Büyük');
     if (p.isHost) tags.push('Ev sahibi');
-    if (p.allIn) tags.push('ALL-IN');
+    if (p.allIn) tags.push('Hepsi');
     if (p.connected === false) tags.push('…');
 
     seat.innerHTML = `
