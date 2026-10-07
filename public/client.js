@@ -125,8 +125,11 @@ function renderSeats(players) {
   }
   order.forEach((p, visualIdx) => {
     const angle = Math.PI / 2 + (visualIdx / order.length) * Math.PI * 2;
-    const x = 50 + Math.cos(angle) * 42;
-    const y = 50 + Math.sin(angle) * 38;
+    const x = 50 + Math.cos(angle) * 40;
+    let y = 50 + Math.sin(angle) * 30;
+    // Keep own seat above action bar / hole row; top seat clear of rim clip
+    if (visualIdx === 0) y = Math.min(y, 78);
+    else if (y < 18) y = 18;
 
     const seat = document.createElement('div');
     seat.className = 'seat';
@@ -147,13 +150,25 @@ function renderSeats(players) {
     if (p.revealChoice === 'show') tags.push('Gösterdi');
     if (p.revealChoice === 'muck') tags.push('Gizledi');
 
-    seat.innerHTML = `
+    const betHtml = p.bet > 0 ? 'Bahis: ' + p.bet : '';
+    if (p.id === myId) {
+      // Own seat: Bahis above empty card slot so action bar doesn't cover it
+      seat.innerHTML = `
+      <div class="seat-name">${escapeHtml(p.nickname)}</div>
+      <div class="tags">${tags.join(' · ')}</div>
+      <div class="seat-chips">${p.chips} chip</div>
+      <div class="seat-bet">${betHtml}</div>
+      <div class="seat-cards"></div>
+    `;
+    } else {
+      seat.innerHTML = `
       <div class="seat-name">${escapeHtml(p.nickname)}</div>
       <div class="tags">${tags.join(' · ')}</div>
       <div class="seat-chips">${p.chips} chip</div>
       <div class="seat-cards"></div>
-      <div class="seat-bet">${p.bet > 0 ? 'Bahis: ' + p.bet : ''}</div>
+      <div class="seat-bet">${betHtml}</div>
     `;
+    }
     const cards = seat.querySelector('.seat-cards');
     if (p.id !== myId) {
       (p.holeCards || []).forEach((c) => cards.appendChild(cardEl(c, true)));

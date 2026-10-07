@@ -189,11 +189,12 @@ html, body {
 }
 
 .table-wrap {
+  overflow: visible;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 10px 4px;
+  padding: 18px 10px 14px;
   min-height: 280px;
 }
 
@@ -210,7 +211,7 @@ html, body {
     inset 0 0 0 3px #2a1a0c,
     0 12px 40px rgba(0,0,0,0.45);
   border-radius: 50% / 42%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pot-area {
@@ -278,10 +279,12 @@ html, body {
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 92px;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: 110px;
   margin: 0 auto 2px;
+  position: relative;
+  z-index: 2;
 }
 
 .seat-chips {
@@ -366,9 +369,11 @@ html, body {
   display: flex;
   justify-content: center;
   gap: 8px;
-  padding: 6px 12px 4px;
-  min-height: 70px;
+  padding: 4px 12px 2px;
+  min-height: 64px;
   align-items: center;
+  position: relative;
+  z-index: 2;
 }
 
 .hole-row .card {
@@ -389,6 +394,8 @@ html, body {
   padding: 8px 12px calc(10px + var(--safe-bottom));
   background: rgba(0,0,0,0.5);
   border-top: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  z-index: 1;
 }
 
 .raise-row {
