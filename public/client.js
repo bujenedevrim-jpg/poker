@@ -133,12 +133,19 @@ function renderSeats(players) {
     order = order.slice(youIdx).concat(order.slice(0, youIdx));
   }
   order.forEach((p, visualIdx) => {
-    const angle = Math.PI / 2 + (visualIdx / order.length) * Math.PI * 2;
-    const x = 50 + Math.cos(angle) * 40;
-    let y = 50 + Math.sin(angle) * 30;
-    // Keep own seat above action bar / hole row; top seat clear of rim clip
-    if (visualIdx === 0) y = Math.min(y, 78);
-    else if (y < 18) y = 18;
+    const n = order.length;
+    const angle = Math.PI / 2 + (visualIdx / n) * Math.PI * 2;
+    // Wider orbit so seats stay on the rim, clear of pot
+    let x = 50 + Math.cos(angle) * 42;
+    let y = 50 + Math.sin(angle) * 36;
+    if (visualIdx === 0) {
+      // Own bet chip sits on bottom rail (name/chips shown under hole cards)
+      x = 50;
+      y = 88;
+    } else {
+      if (y < 14) y = 14;
+      if (y > 78) y = 78;
+    }
 
     const seat = document.createElement('div');
     seat.className = 'seat';
@@ -161,14 +168,7 @@ function renderSeats(players) {
 
     const betHtml = p.bet > 0 ? 'Bahis: ' + p.bet : '';
     if (p.id === myId) {
-      // Own seat: Bahis above empty card slot so action bar doesn't cover it
-      seat.innerHTML = `
-      <div class="seat-name">${escapeHtml(p.nickname)}</div>
-      <div class="tags">${tags.join(' · ')}</div>
-      <div class="seat-chips">${p.chips} chip</div>
-      <div class="seat-bet">${betHtml}</div>
-      <div class="seat-cards"></div>
-    `;
+      seat.innerHTML = `<div class="seat-bet">${betHtml}</div>`;
     } else {
       seat.innerHTML = `
       <div class="seat-name">${escapeHtml(p.nickname)}</div>
@@ -177,9 +177,7 @@ function renderSeats(players) {
       <div class="seat-cards"></div>
       <div class="seat-bet">${betHtml}</div>
     `;
-    }
-    const cards = seat.querySelector('.seat-cards');
-    if (p.id !== myId) {
+      const cards = seat.querySelector('.seat-cards');
       (p.holeCards || []).forEach((c) => cards.appendChild(cardEl(c, true)));
     }
     root.appendChild(seat);
@@ -190,6 +188,25 @@ function renderCommunity(cards) {
   const el = $('community');
   el.innerHTML = '';
   (cards || []).forEach((c) => el.appendChild(cardEl(c, false)));
+}
+
+
+function renderYouMeta(s) {
+  const el = $('you-meta');
+  if (!el) return;
+  const me = (s.players || []).find((p) => p.id === myId);
+  if (!me) {
+    el.textContent = '';
+    return;
+  }
+  const tags = [];
+  if (me.isDealer) tags.push('D');
+  if (me.isSB) tags.push('Küçük');
+  if (me.isBB) tags.push('Büyük');
+  if (me.isHost) tags.push('Ev sahibi');
+  if (me.allIn) tags.push('Hepsi');
+  const tagStr = tags.length ? ' · ' + tags.join(' · ') : '';
+  el.innerHTML = `<strong>${escapeHtml(me.nickname)}</strong> · ${me.chips} chip${tagStr}`;
 }
 
 function renderHole(s) {

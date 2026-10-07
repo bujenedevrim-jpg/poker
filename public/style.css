@@ -190,20 +190,25 @@ html, body {
 
 .table-wrap {
   overflow: visible;
-  flex: 1;
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 18px 10px 14px;
-  min-height: 280px;
+  padding: 10px 8px 8px;
+  min-height: 240px;
+  box-sizing: border-box;
 }
 
 .felt {
   position: relative;
   width: 100%;
-  max-width: 560px;
-  aspect-ratio: 1.35 / 1;
-  min-height: 260px;
+  max-width: 640px;
+  margin: 0 auto;
+  aspect-ratio: 1.25 / 1;
+  min-height: 280px;
   background:
     radial-gradient(ellipse at center, #127a3d 0%, var(--felt) 55%, var(--felt-dark) 100%);
   border: 10px solid #5c3a1e;
@@ -212,15 +217,16 @@ html, body {
     0 12px 40px rgba(0,0,0,0.45);
   border-radius: 50% / 42%;
   overflow: visible;
+  flex-shrink: 0;
 }
 
 .pot-area {
   position: absolute;
   left: 50%;
-  top: 58%;
+  top: 46%;
   transform: translate(-50%, -50%);
   text-align: center;
-  width: min(58%, 240px);
+  width: min(70%, 260px);
   z-index: 1;
   pointer-events: none;
 }
@@ -454,16 +460,32 @@ html, body {
   border: 1px solid rgba(255,255,255,0.15);
 }
 
-@media (max-width: 400px) {
+@media (max-width: 700px) {
+  .table-wrap {
+    padding: 8px 4px 6px;
+  }
   .felt {
+    width: 100%;
+    max-width: none;
     aspect-ratio: auto;
-    height: 300px;
-    border-radius: 40% / 36%;
+    height: min(48dvh, 380px);
+    min-height: 260px;
+    border-radius: 48% / 40%;
+    border-width: 8px;
+  }
+  .pot-area {
+    top: 44%;
+    width: min(78%, 280px);
+  }
+  .last-action {
+    font-size: 0.7rem;
+    padding: 3px 8px;
   }
   .action-btns {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
-  .seat { width: 78px; }
+  .seat { width: 84px; }
+  .seat-name { max-width: 96px; font-size: 0.7rem; }
 }
 
 /* Live hand strength + showdown */
@@ -557,6 +579,34 @@ html, body {
   flex-shrink: 0;
 }
 .chip-disc:first-child { margin-left: 0; }
+
+
+/* Own seat on felt: only Bahis — name/chips are under hole cards */
+.seat.you .seat-name,
+.seat.you .tags,
+.seat.you .seat-chips,
+.seat.you .seat-cards {
+  display: none;
+}
+.seat.you {
+  width: auto;
+  min-width: 0;
+}
+.seat.you .seat-bet {
+  background: rgba(0,0,0,0.55);
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.you-meta {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0 12px 2px;
+  min-height: 1.1em;
+}
+.you-meta strong { color: var(--gold); font-weight: 700; }
 
 /* Reveal (Göster / Gizle) bar */
 .reveal-bar {
